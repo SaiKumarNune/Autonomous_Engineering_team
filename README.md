@@ -168,7 +168,7 @@ autonomous-software-engineering-team/
 ├── main.py
 ├── requirements.txt
 ├── README.md
-├
+├── .gitignore
 │
 ├── agents/
 │   ├── product_manager_agent.py
@@ -194,20 +194,13 @@ autonomous-software-engineering-team/
 ├── tools/
 │
 ├── database/
-│   ├── setup_db.py
-│   └── software_team.db
+│   └── setup_db.py
 │
 ├── memory/
-│
 ├── logs/
-│
 ├── evals/
-│
 ├── tests/
-│
 └── generated_projects/
-```
-
 ---
 
 ## Database Schema
