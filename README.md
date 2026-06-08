@@ -168,7 +168,7 @@ autonomous-software-engineering-team/
 ├── main.py
 ├── requirements.txt
 ├── README.md
-├── .env
+├
 │
 ├── agents/
 │   ├── product_manager_agent.py
