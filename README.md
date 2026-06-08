@@ -2,117 +2,364 @@
 
 ## Overview
 
-Autonomous Software Engineering Team is a multi-agent AI platform designed to convert natural language product ideas into a complete engineering workflow. The platform generates requirements, system architecture, backend and frontend code, tests, DevOps artifacts, and reviewer feedback in a cohesive and repeatable manner.
+Autonomous Software Engineering Team is a multi-agent AI platform that transforms a natural language software idea into a structured engineering workflow. The system uses specialized AI agents orchestrated through LangGraph and powered by local LLM inference using Ollama.
 
-## Features
+The platform simulates a real-world software engineering team by assigning responsibilities to dedicated agents that collaborate to generate requirements, architecture, backend code, frontend code, testing artifacts, DevOps configurations, and engineering reviews.
 
-- Natural language idea intake and product modeling
-- Automated requirements generation and task breakdown
-- System architecture planning and component mapping
-- Backend service scaffolding with API and business logic
-- Frontend interface generation with responsive UI code
-- Automated test generation for unit, integration, and end-to-end coverage
-- DevOps file generation for deployment pipelines and infrastructure
-- Internal review feedback to improve code quality and alignment
+---
 
-## Architecture
+## Key Features
 
-The platform is built around an agent-based architecture where specialized agents collaborate to transform product concepts into code and documentation. Core architecture components include:
+* Multi-agent software development workflow
+* LangGraph-based agent orchestration
+* Local LLM inference using Ollama
+* Automated requirements generation
+* System architecture design generation
+* Backend API generation
+* Frontend UI generation
+* Automated pytest test creation
+* DevOps and deployment artifact generation
+* Engineering review and quality assessment
+* SQLite persistence layer
+* Streamlit-based user interface
 
-- Input analysis and product idea parsing
-- Requirements and specification generation
-- Architecture modeling and design generation
-- Code generation and scaffolding
-- Test and DevOps artifact generation
-- Review and feedback loop
+---
+
+## System Architecture
+
+The workflow follows a sequential engineering pipeline:
+
+User Idea
+↓
+Product Manager Agent
+↓
+Architect Agent
+↓
+Backend Engineer Agent
+↓
+Frontend Engineer Agent
+↓
+QA Engineer Agent
+↓
+DevOps Engineer Agent
+↓
+Reviewer Agent
+↓
+Generated Software Project
+
+Each agent receives outputs from previous agents and contributes specialized engineering artifacts to the final solution.
+
+---
 
 ## Agent Responsibilities
 
-- **Idea Agent**: Captures natural language requirements and decomposes product ideas.
-- **Requirements Agent**: Produces detailed functional and non-functional requirements.
-- **Architecture Agent**: Designs system components, data flow, and deployment topology.
-- **Backend Agent**: Generates API, service, and database code.
-- **Frontend Agent**: Builds UI layers and interface components.
-- **Test Agent**: Creates automated tests for functionality and reliability.
-- **DevOps Agent**: Generates CI/CD, containerization, and deployment configuration.
-- **Review Agent**: Evaluates output, suggests improvements, and enforces quality standards.
+### Product Manager Agent
 
-## Tech Stack
+Responsible for:
 
-- AI / multi-agent orchestration
-- Backend framework and runtime
-- Frontend framework
-- Testing frameworks for unit and integration tests
-- DevOps tooling for CI/CD and deployment
-- Database system for persistence
+* Requirement gathering
+* Functional requirement generation
+* Non-functional requirement generation
+* User story creation
+* Acceptance criteria definition
 
-## Folder Structure
+### Architect Agent
+
+Responsible for:
+
+* High-level architecture design
+* Component identification
+* API planning
+* Database design recommendations
+* Technology selection
+
+### Backend Engineer Agent
+
+Responsible for:
+
+* FastAPI service generation
+* API endpoint design
+* Business logic generation
+* Database integration code
+* Backend project scaffolding
+
+### Frontend Engineer Agent
+
+Responsible for:
+
+* Streamlit UI generation
+* User workflow implementation
+* Form generation
+* Dashboard generation
+* Frontend component creation
+
+### QA Engineer Agent
+
+Responsible for:
+
+* Pytest test generation
+* Functional testing
+* Validation testing
+* Edge-case testing
+* Integration test generation
+
+### DevOps Engineer Agent
+
+Responsible for:
+
+* Docker configuration generation
+* Deployment scripts
+* CI/CD configuration
+* Infrastructure templates
+* Environment setup files
+
+### Reviewer Agent
+
+Responsible for:
+
+* Solution review
+* Code quality assessment
+* Architecture validation
+* Improvement recommendations
+* Final engineering feedback
+
+---
+
+## Technology Stack
+
+### AI & Agent Framework
+
+* LangGraph
+* LangChain
+* Ollama
+* Llama 3.1 8B
+
+### Application Layer
+
+* Python
+* Streamlit
+
+### Data Layer
+
+* SQLite
+
+### Testing
+
+* Pytest
+
+### DevOps
+
+* Docker
+* CI/CD Templates
+
+### Utilities
+
+* Pydantic
+* Python Dotenv
+
+---
+
+## Project Structure
 
 ```text
-/autonomous-software-engineering-team
+autonomous-software-engineering-team/
+│
+├── app.py
+├── main.py
+├── requirements.txt
 ├── README.md
-├── docs/
-├── src/
-│   ├── backend/
-│   ├── frontend/
-│   ├── agents/
-│   └── infrastructure/
+├── .env
+│
+├── agents/
+│   ├── product_manager_agent.py
+│   ├── architect_agent.py
+│   ├── backend_engineer_agent.py
+│   ├── frontend_engineer_agent.py
+│   ├── qa_engineer_agent.py
+│   ├── devops_engineer_agent.py
+│   └── reviewer_agent.py
+│
+├── workflows/
+│   └── software_team_graph.py
+│
+├── prompts/
+│   ├── product_manager_prompt.txt
+│   ├── architect_prompt.txt
+│   ├── backend_prompt.txt
+│   ├── frontend_prompt.txt
+│   ├── qa_prompt.txt
+│   ├── devops_prompt.txt
+│   └── reviewer_prompt.txt
+│
+├── tools/
+│
+├── database/
+│   ├── setup_db.py
+│   └── software_team.db
+│
+├── memory/
+│
+├── logs/
+│
+├── evals/
+│
 ├── tests/
-├── devops/
-└── schema/
+│
+└── generated_projects/
 ```
+
+---
 
 ## Database Schema
 
-A representative database schema includes:
+### projects
 
-- `users` — product managers, reviewers, and developers
-- `projects` — product ideas and engineering tasks
-- `requirements` — generated functional and non-functional requirements
-- `components` — architecture elements and service definitions
-- `deployments` — DevOps configuration and environment metadata
+Stores user software requests.
 
-## Setup Instructions
+| Column      | Type      |
+| ----------- | --------- |
+| id          | INTEGER   |
+| title       | TEXT      |
+| description | TEXT      |
+| created_at  | TIMESTAMP |
 
-1. Clone the repository.
-2. Install dependencies for backend, frontend, and agent services.
-3. Configure environment variables for API keys, database credentials, and agent settings.
-4. Initialize the database schema.
-5. Validate the project structure and configuration files.
+### requirements
 
-## Running Ollama
+Stores generated requirements.
 
-1. Install Ollama following the official setup instructions.
-2. Start the Ollama service.
-3. Configure the project to use Ollama for AI-driven agent coordination.
-4. Verify connectivity and agent responses from the Ollama runtime.
+| Column       | Type    |
+| ------------ | ------- |
+| id           | INTEGER |
+| project_id   | INTEGER |
+| requirements | TEXT    |
 
-## Running the App
+### architectures
 
-1. Start the backend service.
-2. Start the frontend service.
-3. Confirm the application connects to the database and API endpoints.
-4. Use the UI or API to submit product ideas and review generated outputs.
+Stores generated architecture documents.
+
+| Column       | Type    |
+| ------------ | ------- |
+| id           | INTEGER |
+| project_id   | INTEGER |
+| architecture | TEXT    |
+
+### generated_artifacts
+
+Stores generated outputs from agents.
+
+| Column        | Type    |
+| ------------- | ------- |
+| id            | INTEGER |
+| project_id    | INTEGER |
+| artifact_type | TEXT    |
+| content       | TEXT    |
+
+---
+
+## Installation
+
+### Clone Repository
+
+```bash
+git clone <repository-url>
+cd autonomous-software-engineering-team
+```
+
+### Create Virtual Environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Ollama Setup
+
+Install Ollama:
+
+https://ollama.com
+
+Pull model:
+
+```bash
+ollama pull llama3.1:8b
+```
+
+Verify:
+
+```bash
+ollama list
+```
+
+Expected:
+
+```text
+llama3.1:8b
+```
+
+---
+
+## Initialize Database
+
+```bash
+python database/setup_db.py
+```
+
+---
+
+## Run CLI Workflow
+
+```bash
+python main.py
+```
+
+Example:
+
+```text
+Build a task management application with FastAPI, Streamlit, SQLite, and Docker
+```
+
+---
+
+## Run Streamlit UI
+
+```bash
+streamlit run app.py
+```
+
+---
 
 ## Example Prompts
 
-- "Build a task management app for distributed engineering teams."
-- "Create a customer support dashboard with analytics and ticket workflows."
-- "Generate requirements and architecture for a marketplace with payment integration."
+* Build a task management platform with authentication and dashboards.
+* Create a customer support ticketing system with analytics.
+* Generate a healthcare claims processing platform.
+* Build an e-commerce application with payments and inventory management.
 
-## Evaluation
+---
 
-Evaluate the platform by reviewing:
+## Future Enhancements
 
-- Accuracy of generated requirements and architecture
-- Correctness and maintainability of generated backend and frontend code
-- Coverage and relevance of generated tests
-- Quality of DevOps artifacts and deployment configuration
-- Effectiveness of reviewer feedback and iterative improvement
+* Multi-agent parallel execution
+* RAG-based engineering knowledge base
+* Automatic repository creation
+* Automatic code export
+* GitHub integration
+* Code execution sandbox
+* Human-in-the-loop approval workflows
 
-## Resume Bullet Points
+---
 
-- Developed a multi-agent AI software engineering platform translating product ideas into full-stack solutions.
-- Implemented automated requirement, architecture, backend, frontend, testing, and DevOps generation.
-- Designed agent workflows to streamline product concept conversion into production-ready artifacts.
-- Integrated AI-driven review feedback for continuous code quality improvement.
+## Resume Highlights
+
+* Built an autonomous multi-agent software engineering platform using LangGraph and Ollama to transform product ideas into full-stack engineering artifacts.
+* Developed specialized Product Manager, Architect, Backend, Frontend, QA, DevOps, and Reviewer agents collaborating through a stateful workflow engine.
+* Implemented local LLM-powered software generation using Llama 3.1 with agent orchestration, SQLite persistence, and Streamlit-based interaction.
+* Automated requirement generation, architecture design, code generation, testing, DevOps artifact creation, and engineering review workflows.
