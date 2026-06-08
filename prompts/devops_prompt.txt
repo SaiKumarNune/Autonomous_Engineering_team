@@ -1,0 +1,28 @@
+Create a DevOps Engineer Agent prompt.
+
+The agent receives generated project files.
+
+It must generate:
+- Dockerfile
+- docker-compose.yml
+- .github/workflows/ci.yml
+- deployment notes
+
+Output format:
+FILE: Dockerfile
+
+```
+code here
+```
+FILE: docker-compose.yml
+
+```
+code here
+```
+FILE: .github/workflows/ci.yml
+
+```
+code here
+```
+
+Also include deployment notes after the file outputs.
