@@ -1,4 +1,3 @@
-import subprocess
 from pathlib import Path
 
 
@@ -31,115 +30,47 @@ def _load_project_output_dir() -> Path:
 
 
 def _validate_project_name(project_name: str) -> Path:
-    if not project_name:
-        raise ValueError("project_name must be provided")
+    if not project_name or Path(project_name).name != project_name:
+        raise ValueError("project_name must be a single relative project directory name")
 
     project_path = Path(project_name)
     if project_path.is_absolute() or any(part == ".." for part in project_path.parts):
         raise ValueError("project_name must be a relative project directory name")
 
     project_root = _load_project_output_dir() / project_path
-    return project_root.resolve()
+    if project_root.is_symlink():
+        raise ValueError("Refusing to use a symlinked project directory.")
+    return project_root
 
 
-def _run_command(command: list, cwd: Path) -> dict:
-    try:
-        result = subprocess.run(
-            command,
-            cwd=str(cwd),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=30,
-            text=True,
-            shell=False,
-        )
-        status = "success" if result.returncode == 0 else "failure"
-        return {
-            "status": status,
-            "command": command,
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "returncode": result.returncode,
-        }
-    except subprocess.TimeoutExpired as exc:
-        return {
-            "status": "timeout",
-            "command": command,
-            "stdout": exc.stdout or "",
-            "stderr": exc.stderr or "",
-            "returncode": None,
-        }
-    except Exception as exc:
-        return {
-            "status": "error",
-            "command": command,
-            "stdout": "",
-            "stderr": str(exc),
-            "returncode": None,
-        }
+def _error(command: list, message: str) -> dict:
+    return {
+        "status": "error",
+        "command": command,
+        "stdout": "",
+        "stderr": message,
+        "returncode": None,
+        "sandbox_enforced": False,
+    }
 
 
 def run_pytest(project_name: str) -> dict:
-    project_root = _validate_project_name(project_name)
-    if not project_root.is_dir():
-        return {
-            "status": "error",
-            "command": ["pytest"],
-            "stdout": "",
-            "stderr": f"Project directory not found: {project_root}",
-            "returncode": None,
-        }
+    """Run pytest inside the sandbox. This never executes generated code on the host."""
+    from execution.sandbox import execute_pytest
 
-    return _run_command(["pytest"], project_root)
+    try:
+        project_root = _validate_project_name(project_name)
+    except (FileNotFoundError, KeyError, ValueError) as exc:
+        return _error(["pytest"], str(exc))
+    if project_root.is_symlink() or not project_root.is_dir():
+        return _error(["pytest"], f"Project directory not found: {project_root}")
+    return execute_pytest(project_root, project_root.name).as_legacy_dict()
 
 
 def run_python_file(project_name: str, file_path: str) -> dict:
-    project_root = _validate_project_name(project_name)
-    if not project_root.is_dir():
-        return {
-            "status": "error",
-            "command": ["python", file_path],
-            "stdout": "",
-            "stderr": f"Project directory not found: {project_root}",
-            "returncode": None,
-        }
-
-    if not file_path:
-        return {
-            "status": "error",
-            "command": ["python", file_path],
-            "stdout": "",
-            "stderr": "file_path must be provided",
-            "returncode": None,
-        }
-
-    target_path = Path(file_path)
-    if target_path.is_absolute() or any(part == ".." for part in target_path.parts):
-        return {
-            "status": "error",
-            "command": ["python", file_path],
-            "stdout": "",
-            "stderr": "file_path must be relative and cannot escape the project directory",
-            "returncode": None,
-        }
-
-    absolute_file_path = (project_root / target_path).resolve()
-    if not str(absolute_file_path).startswith(str(project_root)):
-        return {
-            "status": "error",
-            "command": ["python", file_path],
-            "stdout": "",
-            "stderr": "file_path escapes the project directory",
-            "returncode": None,
-        }
-
-    if not absolute_file_path.is_file():
-        return {
-            "status": "error",
-            "command": ["python", str(absolute_file_path)],
-            "stdout": "",
-            "stderr": f"Python file not found: {absolute_file_path}",
-            "returncode": None,
-        }
-
-    return _run_command(["python", str(absolute_file_path)], project_root)
+    """Refuse host execution. Only the allowlisted pytest command runs in the sandbox."""
+    return _error(
+        ["python", file_path],
+        "Refusing to execute generated Python on the host. "
+        "Only the allowlisted pytest command runs inside the sandbox.",
+    )

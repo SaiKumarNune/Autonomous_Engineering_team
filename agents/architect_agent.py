@@ -1,51 +1,16 @@
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
+from agents.errors import AgentError
+from agents.llm import invoke_agent
+from agents.prompt_loader import load_prompt
 
-# Load environment variables
-load_dotenv()
+AGENT_NAME = "Architect"
 
 
 def run_architect_agent(requirements: str) -> str:
-    """
-    Run the architect agent to generate structured architecture markdown.
-    
-    Args:
-        requirements: The system requirements or specifications
-        
-    Returns:
-        Structured architecture markdown as a string
-        
-    Raises:
-        FileNotFoundError: If prompt file is not found
-        Exception: For other runtime errors
-    """
-    try:
-        # Load the architect prompt
-        prompt_path = Path(__file__).parent.parent / "prompts" / "architect_prompt.txt"
-        
-        if not prompt_path.exists():
-            raise FileNotFoundError(f"Prompt file not found at {prompt_path}")
-        
-        with open(prompt_path, "r") as f:
-            system_prompt = f.read()
-        
-        # Initialize ChatOllama
-        model = ChatOllama(model="llama3.1:8b")
-        
-        # Create the message
-        user_message = f"{system_prompt}\n\nRequirements:\n{requirements}"
-        
-        # Generate architecture
-        response = model.invoke(user_message)
-        
-        # Extract and return the content
-        architecture = response.content
-        
-        return architecture
-        
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Failed to load prompt: {str(e)}")
-    except Exception as e:
-        raise Exception(f"Error running architect agent: {str(e)}")
+    """Turn requirements into an architecture proposal."""
+    if not requirements or not requirements.strip():
+        raise AgentError(AGENT_NAME, "requirements cannot be empty.")
+    return invoke_agent(
+        AGENT_NAME,
+        load_prompt("architect_prompt.txt"),
+        f"Requirements:\n{requirements.strip()}",
+    )

@@ -1,43 +1,25 @@
-import os
-from pathlib import Path
+from agents.artifacts import AgentArtifacts
+from agents.errors import AgentError, with_correction
+from agents.llm import invoke_structured_agent
+from agents.prompt_loader import load_prompt
 
-from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
-
-load_dotenv()
-
-PROMPT_FILE = Path(__file__).resolve().parent.parent / "prompts" / "qa_prompt.txt"
+AGENT_NAME = "QA Engineer"
 
 
-def _load_prompt():
-    if not PROMPT_FILE.exists():
-        raise FileNotFoundError(f"Prompt file not found: {PROMPT_FILE}")
-
-    return PROMPT_FILE.read_text(encoding="utf-8")
-
-
-def run_qa_engineer_agent(generated_code: str, requirements: str) -> str:
-    prompt_text = _load_prompt()
-
-    final_prompt = f"""
-{prompt_text}
-
-Generated Code:
-{generated_code}
-
-Requirements:
-{requirements}
-
-Generate pytest test cases.
-
-Return only test files.
-"""
-
-    llm = ChatOllama(
-        model="llama3.1:8b",
-        temperature=0
+def run_qa_engineer_agent(
+    generated_code: str,
+    requirements: str,
+    correction: str = "",
+) -> AgentArtifacts:
+    """Generate pytest files for the generated backend and frontend artifacts."""
+    if not generated_code or not generated_code.strip():
+        raise AgentError(AGENT_NAME, "generated_code cannot be empty.")
+    if not requirements or not requirements.strip():
+        raise AgentError(AGENT_NAME, "requirements cannot be empty.")
+    user_content = (
+        f"Generated files:\n{generated_code.strip()}\n\n"
+        f"Requirements:\n{requirements.strip()}\n\n"
+        "Generate pytest files for the generated backend and frontend artifacts."
     )
-
-    result = llm.invoke(final_prompt)
-
-    return result.content
+    user_content = with_correction(user_content, correction)
+    return invoke_structured_agent(AGENT_NAME, load_prompt("qa_prompt.txt"), user_content)

@@ -1,358 +1,74 @@
 # Autonomous Software Engineering Team
 
-## Overview
+Seven specialized agents turn a software request into requirements, architecture, backend code, an optional frontend, tests, and DevOps files. A LangGraph workflow runs the agents in order, checks their files, and executes generated tests in a Docker sandbox. A passing run stops at `awaiting_approval`. Nothing is approved automatically.
 
-Autonomous Software Engineering Team is a multi-agent AI platform that transforms a natural language software idea into a structured engineering workflow. The system uses specialized AI agents orchestrated through LangGraph and powered by local LLM inference using Ollama.
+## Agents
 
-The platform simulates a real-world software engineering team by assigning responsibilities to dedicated agents that collaborate to generate requirements, architecture, backend code, frontend code, testing artifacts, DevOps configurations, and engineering reviews.
+The graph keeps these seven roles:
 
----
+1. **Product Manager** writes the requirements.
+2. **Architect** writes the architecture.
+3. **Backend Engineer** writes the backend and `requirements.txt`.
+4. **Frontend Engineer** writes a UI only when one is requested. A backend-only request, including “no frontend,” “no UI,” “without a frontend,” or “no Streamlit,” produces no frontend files.
+5. **QA Engineer** writes pytest tests.
+6. **DevOps Engineer** selects the deterministic FastAPI + SQLite templates for `Dockerfile`, `docker-compose.yml`, and `.github/workflows/ci.yml`. It does not ask the model to invent those files.
+7. **Reviewer** reads the saved artifacts and sandbox results.
 
-## Key Features
+LangGraph also runs the sandbox, a bounded repair step, and an approval interrupt. Those steps are not extra agents. After DevOps, the flow is sandbox tests, repair when the existing repair rules apply, Reviewer, then the approval interrupt.
 
-* Multi-agent software development workflow
-* LangGraph-based agent orchestration
-* Local LLM inference using Ollama
-* Automated requirements generation
-* System architecture design generation
-* Backend API generation
-* Frontend UI generation
-* Automated pytest test creation
-* DevOps and deployment artifact generation
-* Engineering review and quality assessment
-* SQLite persistence layer
-* Streamlit-based user interface
+## Validation
 
----
+Generated files are checked before they are written.
 
-## System Architecture
+- Backend code must have one module-level FastAPI application, SQLite evidence (`sqlite3` or a Python string containing `sqlite`), and exact pins for the sandbox packages.
+- A SQLAlchemy ORM class cannot be used as a FastAPI route parameter, return annotation, or `response_model`. Request and response bodies use Pydantic schemas.
+- A missing SQLite configuration or an invalid ORM annotation can trigger one Backend correction. The replacement is checked again before it is written.
+- QA tests must be collectable pytest modules and may import only the standard library, local modules, and the approved packages.
+- DevOps files are rendered from `templates/fastapi_sqlite` for one FastAPI application that uses SQLite. Unsupported frameworks and database servers are rejected. The template does not add a SQLite server container.
 
-The workflow follows a sequential engineering pipeline:
+`FAST_DEV_MODE` (`1`, `true`, `yes`, or `on`) skips the model and returns labeled simulated files. That output is not a real Ollama run.
 
-User Idea
-↓
-Product Manager Agent
-↓
-Architect Agent
-↓
-Backend Engineer Agent
-↓
-Frontend Engineer Agent
-↓
-QA Engineer Agent
-↓
-DevOps Engineer Agent
-↓
-Reviewer Agent
-↓
-Generated Software Project
+## Docker sandbox
 
-Each agent receives outputs from previous agents and contributes specialized engineering artifacts to the final solution.
+Generated pytest runs only inside the `autonomous-team-sandbox:local` image. The container uses `--network none`, drops all capabilities, sets `no-new-privileges`, runs as user `65534:65534`, and mounts the project read-only. Memory, CPU, process, and output limits apply. The command is the fixed pytest command. If Docker or a required control is missing, the run records a sandbox error and does not execute the generated code on the host.
 
----
+The image contains the pinned test packages: pytest 8.4.1, fastapi 0.115.12, uvicorn 0.34.0, sqlalchemy 2.0.40, httpx 0.28.1, and pydantic 2.11.7. Generated `requirements.txt` is classified. It is not installed during the test run. The project root is placed on `PYTHONPATH` inside the container.
 
-## Agent Responsibilities
+Docker is not a complete security boundary. A passing sandbox test does not prove the application is correct, secure, or ready to deploy. See `sandbox/THREAT_MODEL.md`.
 
-### Product Manager Agent
-
-Responsible for:
-
-* Requirement gathering
-* Functional requirement generation
-* Non-functional requirement generation
-* User story creation
-* Acceptance criteria definition
-
-### Architect Agent
-
-Responsible for:
-
-* High-level architecture design
-* Component identification
-* API planning
-* Database design recommendations
-* Technology selection
-
-### Backend Engineer Agent
-
-Responsible for:
-
-* FastAPI service generation
-* API endpoint design
-* Business logic generation
-* Database integration code
-* Backend project scaffolding
-
-### Frontend Engineer Agent
-
-Responsible for:
-
-* Streamlit UI generation
-* User workflow implementation
-* Form generation
-* Dashboard generation
-* Frontend component creation
-
-### QA Engineer Agent
-
-Responsible for:
-
-* Pytest test generation
-* Functional testing
-* Validation testing
-* Edge-case testing
-* Integration test generation
-
-### DevOps Engineer Agent
-
-Responsible for:
-
-* Docker configuration generation
-* Deployment scripts
-* CI/CD configuration
-* Infrastructure templates
-* Environment setup files
-
-### Reviewer Agent
-
-Responsible for:
-
-* Solution review
-* Code quality assessment
-* Architecture validation
-* Improvement recommendations
-* Final engineering feedback
-
----
-
-## Technology Stack
-
-### AI & Agent Framework
-
-* LangGraph
-* LangChain
-* Ollama
-* Llama 3.1 8B
-
-### Application Layer
-
-* Python
-* Streamlit
-
-### Data Layer
-
-* SQLite
-
-### Testing
-
-* Pytest
-
-### DevOps
-
-* Docker
-* CI/CD Templates
-
-### Utilities
-
-* Pydantic
-* Python Dotenv
-
----
-
-## Project Structure
-
-```text
-autonomous-software-engineering-team/
-│
-├── app.py
-├── main.py
-├── requirements.txt
-├── README.md
-├── .gitignore
-│
-├── agents/
-│   ├── product_manager_agent.py
-│   ├── architect_agent.py
-│   ├── backend_engineer_agent.py
-│   ├── frontend_engineer_agent.py
-│   ├── qa_engineer_agent.py
-│   ├── devops_engineer_agent.py
-│   └── reviewer_agent.py
-│
-├── workflows/
-│   └── software_team_graph.py
-│
-├── prompts/
-│   ├── product_manager_prompt.txt
-│   ├── architect_prompt.txt
-│   ├── backend_prompt.txt
-│   ├── frontend_prompt.txt
-│   ├── qa_prompt.txt
-│   ├── devops_prompt.txt
-│   └── reviewer_prompt.txt
-│
-├── tools/
-│
-├── database/
-│   └── setup_db.py
-│
-├── memory/
-├── logs/
-├── evals/
-├── tests/
-└── generated_projects/
----
-
-## Database Schema
-
-### projects
-
-Stores user software requests.
-
-| Column      | Type      |
-| ----------- | --------- |
-| id          | INTEGER   |
-| title       | TEXT      |
-| description | TEXT      |
-| created_at  | TIMESTAMP |
-
-### requirements
-
-Stores generated requirements.
-
-| Column       | Type    |
-| ------------ | ------- |
-| id           | INTEGER |
-| project_id   | INTEGER |
-| requirements | TEXT    |
-
-### architectures
-
-Stores generated architecture documents.
-
-| Column       | Type    |
-| ------------ | ------- |
-| id           | INTEGER |
-| project_id   | INTEGER |
-| architecture | TEXT    |
-
-### generated_artifacts
-
-Stores generated outputs from agents.
-
-| Column        | Type    |
-| ------------- | ------- |
-| id            | INTEGER |
-| project_id    | INTEGER |
-| artifact_type | TEXT    |
-| content       | TEXT    |
-
----
-
-## Installation
-
-### Clone Repository
-
-```bash
-git clone <repository-url>
-cd autonomous-software-engineering-team
-```
-
-### Create Virtual Environment
+## Setup
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-### Install Dependencies
-
-```bash
 pip install -r requirements.txt
+docker build -t autonomous-team-sandbox:local sandbox
 ```
 
----
+Install Ollama and pull `llama3.1:8b`. The model settings are `OLLAMA_MODEL` and `OLLAMA_BASE_URL` (the local default is `http://localhost:11434`). Do not commit a `.env` file.
 
-## Ollama Setup
-
-Install Ollama:
-
-https://ollama.com
-
-Pull model:
-
-```bash
-ollama pull llama3.1:8b
-```
-
-Verify:
-
-```bash
-ollama list
-```
-
-Expected:
-
-```text
-llama3.1:8b
-```
-
----
-
-## Initialize Database
-
-```bash
-python database/setup_db.py
-```
-
----
-
-## Run CLI Workflow
-
-```bash
-python main.py
-```
-
-Example:
-
-```text
-Build a task management application with FastAPI, Streamlit, SQLite, and Docker
-```
-
----
-
-## Run Streamlit UI
+Run the Streamlit UI:
 
 ```bash
 streamlit run app.py
 ```
 
----
+Run one workflow from the terminal:
 
-## Example Prompts
+```bash
+python main.py
+```
 
-* Build a task management platform with authentication and dashboards.
-* Create a customer support ticketing system with analytics.
-* Generate a healthcare claims processing platform.
-* Build an e-commerce application with payments and inventory management.
+Run the project tests, including the Docker integration tests when Docker is available:
 
----
+```bash
+pytest
+```
 
-## Future Enhancements
+## Current limitations
 
-* Multi-agent parallel execution
-* RAG-based engineering knowledge base
-* Automatic repository creation
-* Automatic code export
-* GitHub integration
-* Code execution sandbox
-* Human-in-the-loop approval workflows
-
----
-
-## Resume Highlights
-
-* Built an autonomous multi-agent software engineering platform using LangGraph and Ollama to transform product ideas into full-stack engineering artifacts.
-* Developed specialized Product Manager, Architect, Backend, Frontend, QA, DevOps, and Reviewer agents collaborating through a stateful workflow engine.
-* Implemented local LLM-powered software generation using Llama 3.1 with agent orchestration, SQLite persistence, and Streamlit-based interaction.
-* Automated requirement generation, architecture design, code generation, testing, DevOps artifact creation, and engineering review workflows.
+- A real local Ollama run has not reached `awaiting_approval`. The latest real run, `phase4final1`, passed backend validation and then failed when the Frontend Engineer returned backend-owned files. The backend-only routing check was corrected after that run. The run was not repeated.
+- Saved failed checkpoints are terminal. Resuming one does not regenerate the earlier agents and does not continue a finished failure safely.
+- The sandbox workspace is read-only. An application that opens `sqlite:///./tasks.db` cannot create that file there.
+- The sandbox does not provide Streamlit, and a requested Streamlit UI is not executed by the sandbox.
+- Human approval is required after a passing sandbox run. The workflow does not approve, push, or deploy its own output.

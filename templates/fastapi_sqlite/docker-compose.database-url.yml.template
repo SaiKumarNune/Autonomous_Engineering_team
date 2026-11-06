@@ -1,0 +1,7 @@
+services:
+  app:
+    build: .
+    ports:
+      - "$port:$port"
+    environment:
+      DATABASE_URL: "$database_url"

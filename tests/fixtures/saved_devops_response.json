@@ -1,0 +1,23 @@
+{
+  "summary": "Generated artifacts for project phase4230243t3. FastAPI service with SQLite and pytest tests. Deployment notes: Run with uvicorn, use DATABASE_URL for SQLite connection.",
+  "files": [
+    {
+      "relative_path": "Dockerfile",
+      "content": "FROM python:3.10-slim\nWORKDIR /app\nCOPY requirements.txt .\nRUN pip install -r requirements.txt\nCOPY . .\nCMD [",
+      "language": "dockerfile",
+      "source_agent": "DevOps Engineer"
+    },
+    {
+      "relative_path": "docker-compose.yml",
+      "content": "version: '3'\nservices:\n  app:\n    build: .\n    ports:\n      - 8000:8000\n    environment:\n      - DATABASE_URL=sqlite:///database.db\n    volumes:\n      - .:/app\n    depends_on:\n      - db\n  db:\n    image: sqlite:3\n    volumes:\n      - db-data:/data\nvolumes:\n  db-data:\n",
+      "language": "yml",
+      "source_agent": "DevOps Engineer"
+    },
+    {
+      "relative_path": ".github/workflows/ci.yml",
+      "content": "name: CI\non:\n  push:\n    branches: [ main ]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Checkout code\n        uses: actions/checkout@v3\n      - name: Set up Python 3.10\n        uses: actions/setup-python@v3\n        with:\n          python-version: 3.10\n      - name: Install dependencies\n        run: pip install -r requirements.txt\n      - name: Run tests\n        run: pytest",
+      "language": "yml",
+      "source_agent": "DevOps Engineer"
+    }
+  ]
+}

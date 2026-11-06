@@ -4,8 +4,9 @@ import os
 DB_PATH = os.path.join(os.path.dirname(__file__), "software_team.db")
 
 
-def create_database():
-    conn = sqlite3.connect(DB_PATH)
+def create_database(db_path: str | os.PathLike[str] | None = None) -> str:
+    path = os.fspath(db_path) if db_path is not None else DB_PATH
+    conn = sqlite3.connect(path)
     cursor = conn.cursor()
     cursor.execute("PRAGMA foreign_keys = ON;")
 
@@ -13,6 +14,7 @@ def create_database():
     CREATE TABLE IF NOT EXISTS projects (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_name TEXT NOT NULL,
+        run_id TEXT,
         user_request TEXT NOT NULL,
         project_type TEXT DEFAULT 'full_stack_app',
         target_backend TEXT DEFAULT 'FastAPI',
@@ -124,6 +126,7 @@ def create_database():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER NOT NULL,
         workflow_name TEXT NOT NULL,
+        run_id TEXT,
         current_node TEXT,
         status TEXT NOT NULL DEFAULT 'running',
         state_json TEXT,
@@ -143,6 +146,63 @@ def create_database():
         content TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS approvals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT NOT NULL,
+        artifact_hash TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (run_id, artifact_hash, decision)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS repair_attempts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT NOT NULL,
+        attempt INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        failure_signature TEXT,
+        diff_preview TEXT,
+        artifact_hash_before TEXT,
+        artifact_hash_after TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS graph_checkpoints (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        payload TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS run_metrics (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT NOT NULL,
+        metric_name TEXT NOT NULL,
+        agent_name TEXT,
+        duration_ms INTEGER,
+        prompt_tokens INTEGER,
+        completion_tokens INTEGER,
+        total_tokens INTEGER,
+        detail_json TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS run_locks (
+        lock_name TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        owner TEXT NOT NULL,
+        acquired_at TEXT NOT NULL
     )
     """)
 
@@ -170,8 +230,13 @@ def create_database():
         "CREATE INDEX IF NOT EXISTS idx_agent_logs_project_id ON agent_logs(project_id)",
         "CREATE INDEX IF NOT EXISTS idx_agent_logs_agent_name ON agent_logs(agent_name)",
         "CREATE INDEX IF NOT EXISTS idx_workflow_runs_project_id ON workflow_runs(project_id)",
+        "CREATE INDEX IF NOT EXISTS idx_workflow_runs_run_id ON workflow_runs(run_id)",
+        "CREATE INDEX IF NOT EXISTS idx_projects_run_id ON projects(run_id)",
         "CREATE INDEX IF NOT EXISTS idx_agent_artifacts_project_id ON agent_artifacts(project_id)",
-        "CREATE INDEX IF NOT EXISTS idx_evaluation_results_project_id ON evaluation_results(project_id)"
+        "CREATE INDEX IF NOT EXISTS idx_evaluation_results_project_id ON evaluation_results(project_id)",
+        "CREATE INDEX IF NOT EXISTS idx_approvals_run_id ON approvals(run_id)",
+        "CREATE INDEX IF NOT EXISTS idx_repair_attempts_run_id ON repair_attempts(run_id)",
+        "CREATE INDEX IF NOT EXISTS idx_run_metrics_run_id ON run_metrics(run_id)"
     ]
 
     for index_sql in indexes:
@@ -184,7 +249,7 @@ def create_database():
         ("preferred_database", "SQLite", "Default database for generated projects and local development."),
         ("preferred_testing", "pytest", "Default Python testing framework."),
         ("preferred_deployment", "Docker", "Default packaging and deployment strategy."),
-        ("human_approval_required", "true", "Require human approval before writing final generated project files."),
+        ("human_approval_required", "true", "Require human approval before a generated project is exported as verified."),
         ("max_review_severity_allowed", "medium", "Blocks deployment recommendation if high or critical issues exist.")
     ]
 
@@ -195,7 +260,8 @@ def create_database():
 
     conn.commit()
     conn.close()
-    print(f"Database created successfully at: {DB_PATH}")
+    print(f"Database created successfully at: {path}")
+    return path
 
 
 if __name__ == "__main__":

@@ -1,48 +1,49 @@
-import os
-from pathlib import Path
+from agents.artifacts import AgentArtifacts
+from agents.errors import AgentError
+from agents.llm import invoke_structured_agent
+from agents.prompt_loader import load_prompt
 
-from dotenv import load_dotenv
-from langchain_ollama import ChatOllama
-from langchain_core.messages import HumanMessage, SystemMessage
-
-load_dotenv()
-
-_PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "backend_prompt.txt"
-_DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
+AGENT_NAME = "Backend Engineer"
 
 
-def _load_prompt() -> str:
-    if not _PROMPT_PATH.exists():
-        raise FileNotFoundError(f"Prompt file not found: {_PROMPT_PATH}")
+def run_backend_engineer_agent(
+    architecture: str,
+    requirements: str,
+    correction: str = "",
+) -> AgentArtifacts:
+    """Generate backend source from the architecture and requirements."""
+    if not architecture or not architecture.strip():
+        raise AgentError(AGENT_NAME, "architecture cannot be empty.")
+    if not requirements or not requirements.strip():
+        raise AgentError(AGENT_NAME, "requirements cannot be empty.")
+    user_content = (
+        f"Architecture:\n{architecture.strip()}\n\n"
+        f"Requirements:\n{requirements.strip()}"
+    )
+    if correction and correction.strip():
+        user_content = f"{user_content}\n\n{correction.strip()}"
+    return invoke_structured_agent(
+        AGENT_NAME,
+        load_prompt("backend_prompt.txt"),
+        user_content,
+    )
 
-    prompt = _PROMPT_PATH.read_text(encoding="utf-8").strip()
-    if not prompt:
-        raise ValueError(f"Prompt file is empty: {_PROMPT_PATH}")
 
-    return prompt
-
-
-def run_backend_engineer_agent(architecture: str, requirements: str) -> str:
-    try:
-        prompt = _load_prompt()
-        model = ChatOllama(model=_DEFAULT_MODEL)
-
-        user_prompt = (
-            f"{prompt}\n\n"
-            "You are a backend engineer agent. Generate the backend files required for the requested architecture and requirements. "
-            "Return generated backend files using FILE blocks."
-            f"\n\nArchitecture:\n{architecture}\n\nRequirements:\n{requirements}"
-        )
-
-        response = model([
-            SystemMessage(content="You are a backend engineer agent."),
-            HumanMessage(content=user_prompt),
-        ])
-
-        content = getattr(response, "content", None)
-        if content is None:
-            content = str(response)
-
-        return content.strip()
-    except Exception as err:
-        raise RuntimeError(f"Failed to run backend engineer agent: {err}") from err
+def backend_sqlite_repair_request(issues: list[str], artifacts: AgentArtifacts) -> str:
+    """Ask for one correction that includes the rejected source and the contract error."""
+    blocks = [f"PATH: {item.relative_path}\n{item.content}" for item in artifacts.files]
+    original = "\n\n".join(blocks) if blocks else "(no files were returned)"
+    listed = "\n".join(f"- {issue}" for issue in issues)
+    return (
+        "The previous backend artifacts failed validation before they were written.\n"
+        f"Validation errors:\n{listed}\n\n"
+        "Original artifacts:\n"
+        f"{original}\n\n"
+        "Return the complete files again. Python source must import sqlite3 or contain "
+        "a string literal that includes sqlite, such as sqlite:///./tasks.db. "
+        "An environment variable without that literal does not pass. "
+        "Request and response bodies must use Pydantic BaseModel schemas. "
+        "Do not annotate a FastAPI parameter, return type, or response_model with a "
+        "SQLAlchemy ORM class. "
+        "Keep one module-level FastAPI() application and the pinned requirements.txt."
+    )
